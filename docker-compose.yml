@@ -21,6 +21,10 @@ services:
       MYSQL_PASSWORD: pass
     ports:
       - "3306:3306"
+    volumes:
+      - ./database:/docker-entrypoint-initdb.d:ro
+    tmpfs:
+      - /var/lib/mysql
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -proot --silent"]
       interval: 5s
