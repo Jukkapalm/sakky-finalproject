@@ -1,3 +1,5 @@
+SET NAMES utf8mb4;
+
 INSERT INTO events
     (title, description, city, event_date, duration_minutes, max_participants)
 VALUES
