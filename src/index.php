@@ -1,3 +1,9 @@
+<?php
+session_start();
+
+$isLoggedIn = isset($_SESSION['user_id']);
+?>
+
 <!DOCTYPE html>
 <html lang="fi">
     <head>
@@ -38,12 +44,22 @@
                 <!-- Navigaatio linkit -->
                 <div class="collapse navbar-collapse" id="collapsibleNavbar">
                     <ul class="navbar-nav ms-auto align-items-lg-center text-center">
-                        <li class="nav-item"><a class="nav-link" href="#">Etusivu</a></li>
+                        <li class="nav-item"><a class="nav-link" href="index.php">Etusivu</a></li>
                         <li class="nav-item"><a class="nav-link" href="#">Hae tapahtumia</a></li>
                         <li class="nav-item"><a class="nav-link" href="#">Kaikki tapahtumat</a></li>
-                        <li class="nav-item"><a class="nav-link" href="#">Omat tapahtumat</a></li>
-                        <li class="nav-item"><a class="nav-link" href="#">Kirjaudu sisään</a></li>
-                        <li class="nav-item"><a class="nav-link" href="#">Rekisteröidy</a></li>
+
+                        <?php if ($isLoggedIn): ?>
+                            <li class="nav-item"><a class="nav-link" href="#">Omat tapahtumat</a></li>
+                            <li class="nav-item">
+                                <form action="logout.php" method="post">
+                                    <button type="submit" class="nav-link border-0 bg-transparent">Kirjaudu ulos</button>
+                                </form>
+                            </li>
+
+                        <?php else: ?>
+                            <li class="nav-item"><a class="nav-link" href="#">Kirjaudu sisään</a></li>
+                            <li class="nav-item"><a class="nav-link" href="#">Rekisteröidy</a></li>
+                        <?php endif; ?>
                     </ul>
                 </div>
 
