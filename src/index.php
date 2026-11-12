@@ -8,7 +8,7 @@ $isLoggedIn = isset($_SESSION['user_id']);
 <html lang="fi">
     <head>
 
-        <!-- Meta tiedot -->
+        <!-- Meta data -->
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>Ikäihmisten yhteisö</title>
@@ -21,13 +21,13 @@ $isLoggedIn = isset($_SESSION['user_id']);
         <!-- Bootstrap CSS -->
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
 
-        <!-- Oma CSS -->
+        <!-- Own CSS -->
         <link rel="stylesheet" href="css/styles.css">
 
     </head>
     <body>
 
-        <!-- Navigaatio -->
+        <!-- Navigation -->
         <nav class="navbar navbar-expand-lg fixed-top">
             <div class="container-fluid">
 
@@ -41,13 +41,14 @@ $isLoggedIn = isset($_SESSION['user_id']);
                     <span class="navbar-toggler-icon"></span>
                 </button>
 
-                <!-- Navigaatio linkit -->
+                <!-- Navigation links -->
                 <div class="collapse navbar-collapse" id="collapsibleNavbar">
                     <ul class="navbar-nav ms-auto align-items-lg-center text-center">
                         <li class="nav-item"><a class="nav-link" href="index.php">Etusivu</a></li>
                         <li class="nav-item"><a class="nav-link" href="#">Hae tapahtumia</a></li>
                         <li class="nav-item"><a class="nav-link" href="#">Kaikki tapahtumat</a></li>
 
+                        <!-- If user logged in, show these links  -->
                         <?php if ($isLoggedIn): ?>
                             <li class="nav-item"><a class="nav-link" href="#">Omat tapahtumat</a></li>
                             <li class="nav-item">
@@ -56,6 +57,8 @@ $isLoggedIn = isset($_SESSION['user_id']);
                                 </form>
                             </li>
 
+                        <!-- If not logged in, show these links -->
+                        <!-- Condition needed, if want to show these links only if not logged in -->    
                         <?php else: ?>
                             <li class="nav-item"><a class="nav-link" href="#">Kirjaudu sisään</a></li>
                             <li class="nav-item"><a class="nav-link" href="#">Rekisteröidy</a></li>
