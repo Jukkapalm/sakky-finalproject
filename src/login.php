@@ -102,10 +102,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <!-- Submit the login details to this same file for processing -->
         <form action="login.php" method="post">
-            <label for="identiefier">Käyttäjätunnus tai sähköpostiosoite</label>
+            <label for="identifier">Käyttäjätunnus tai sähköpostiosoite</label>
 
-            <!-- Transforms user input more safety form, before printing it in HTML attribute -->
-            <input type="text" id="identifier" name="identifier" required value="<?= htmlspecialchars($identifier, ENT_QUOTES, 'UTF-8') ?>>
+            <!-- Transforms user input more safety form, before printing it in HTML attribute, if loggin in failed -->
+            <input type="text" id="identifier" name="identifier" required value="<?= htmlspecialchars($identifier, ENT_QUOTES, 'UTF-8') ?>">
 
             <label for="password">Salasana</label>
             <input type="password" id="password" name="password" required>
