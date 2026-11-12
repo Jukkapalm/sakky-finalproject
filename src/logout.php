@@ -32,7 +32,7 @@ if (ini_get('session.use_cookies')) {
     );
 }
 
-// Destroy the session data stored on the browser
+// Destroy the session data stored on the server
 session_destroy();
 
 // Redirct the user to the home page after logging out

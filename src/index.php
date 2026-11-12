@@ -1,6 +1,10 @@
 <?php
+
+// Starts or resume the session, so this page can check the user's login status
 session_start();
 
+// Check whether a user ID is stored in the session
+// This determines which navigation links are shown
 $isLoggedIn = isset($_SESSION['user_id']);
 ?>
 
@@ -60,8 +64,8 @@ $isLoggedIn = isset($_SESSION['user_id']);
                         <!-- If not logged in, show these links -->
                         <!-- Condition needed, if want to show these links only if not logged in -->    
                         <?php else: ?>
-                            <li class="nav-item"><a class="nav-link" href="#">Kirjaudu sisään</a></li>
-                            <li class="nav-item"><a class="nav-link" href="#">Rekisteröidy</a></li>
+                            <li class="nav-item"><a class="nav-link" href="login.php">Kirjaudu sisään</a></li>
+                            <li class="nav-item"><a class="nav-link" href="register.php">Rekisteröidy</a></li>
                         <?php endif; ?>
                     </ul>
                 </div>
