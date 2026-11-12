@@ -48,9 +48,7 @@ $isLoggedIn = isset($_SESSION['user_id']);
                 <!-- Navigation links -->
                 <div class="collapse navbar-collapse" id="collapsibleNavbar">
                     <ul class="navbar-nav ms-auto align-items-lg-center text-center">
-                        <li class="nav-item"><a class="nav-link" href="index.php">Etusivu</a></li>
-                        <li class="nav-item"><a class="nav-link" href="#">Hae tapahtumia</a></li>
-                        <li class="nav-item"><a class="nav-link" href="#">Kaikki tapahtumat</a></li>
+                        <li class="nav-item"><a class="nav-link" href="events.php">Kaikki tapahtumat</a></li>
 
                         <!-- If user logged in, show these links  -->
                         <?php if ($isLoggedIn): ?>

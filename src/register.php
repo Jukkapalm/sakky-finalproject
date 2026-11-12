@@ -8,7 +8,6 @@ require_once __DIR__ . '/db/db.php';
 $error = '';
 $username = '';
 $email = '';
-$success = '';
 
 // Checking if the form has been sent and method is post
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -63,8 +62,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'password' => $passwordHash,
             ]);
 
-            // Show success message to user if saving to the database is ok
-            $success = 'Rekisteröityminen onnistui.';
+            // Redirect to the login page after successful registration.
+            header('Location: login.php');
+            exit;
 
             // PDOExceprion tells the error with database
         } catch (PDOException $exception) {
@@ -94,12 +94,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php if ($error !== ''): ?>
             <p role="alert">
                 <?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?>
-            </p>
-        <?php endif; ?>
-
-        <?php if ($success !== ''): ?>
-            <p role="status">
-                <?= htmlspecialchars($success, ENT_QUOTES, 'UTF-8') ?>
             </p>
         <?php endif; ?>
 
