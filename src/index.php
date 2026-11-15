@@ -6,6 +6,19 @@ session_start();
 // Check whether a user ID is stored in the session
 // This determines which navigation links are shown
 $isLoggedIn = isset($_SESSION['user_id']);
+
+require_once __DIR__ . '/db/db.php';
+
+$pdo = databaseConnection();
+$eventStatement = $pdo->query(
+        'SELECT title, description, city, event_date
+        FROM events
+        WHERE event_date >= NOW()
+        ORDER BY event_date ASC
+        LIMIT 4'
+);
+
+$upcomingEvents = $eventStatement->fetchAll();
 ?>
 
 <!DOCTYPE html>
@@ -114,20 +127,29 @@ $isLoggedIn = isset($_SESSION['user_id']);
                             <!-- Incoming events cards -->
                             <h1>Tulevat tapahtumat</h1>
                             <div class="row g-3 incoming-events">
-                                <div class="col-12 col-md-6">
-                                    <div class="card event-card p-3">
-                                        <p class="event-date">29.10.2026</p>
-                                        <p class="event-desc">Kahvittelua ja rentoa jutustelua</p>
-                                        <p class="person-number">20/20</p>
-                                    </div>
-                                </div>
-                                <div class="col-12 col-md-6">
-                                    <div class="card event-card p-3">
-                                        <p class="event-date">29.10.2026</p>
-                                        <p class="event-desc">Kahvittelua ja rentoa jutustelua</p>
-                                        <p class="person-number">15/20</p>
-                                    </div>
-                                </div>
+                                <?php if ($upcomingEvents === []): ?>
+                                    <p>Tulevia tapahtumia ei löytynyt.</p>
+                                <?php else: ?>
+                                    <?php foreach ($upcomingEvents as $event): ?>
+                                        <div class="col-12 col-md-6">
+                                            <article class="card event-card p-3 h-100">
+                                                <h2>
+                                                    <?= htmlspecialchars($event['title'], ENT_QUOTES, 'UTF-8') ?>
+                                                </h2>
+                                                <p class="event-date">
+                                                    <?= htmlspecialchars((new DateTimeImmutable($event['event_date']))->format('d.m.Y H:i'), ENT_QUOTES, 'UTF-8') ?>
+                                                </p>
+                                                <p class="event-desc">
+                                                    <?= htmlspecialchars($event['description'] ?? '', ENT_QUOTES, 'UTF-8') ?>
+                                                </p>
+                                                <p>
+                                                    Paikka:
+                                                    <?= htmlspecialchars($event['city'], ENT_QUOTES, 'UTF-8') ?>
+                                                </p>
+                                            </article>
+                                        </div>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
                             </div>
                             
                         </div>
