@@ -50,6 +50,13 @@ $isLoggedIn = isset($_SESSION['user_id']);
                     <ul class="navbar-nav ms-auto align-items-lg-center text-center">
                         <li class="nav-item"><a class="nav-link" href="events.php">Kaikki tapahtumat</a></li>
 
+                        <!-- If user role is admin, show add event link -->
+                        <?php if (($_SESSION['role'] ?? '') === 'admin'): ?>
+                            <li class="nav-item">
+                                <a class="nav-link" href="add_event.php">Lisää tapahtuma</a>
+                            </li>
+                        <?php endif; ?>
+
                         <!-- If user logged in, show these links  -->
                         <?php if ($isLoggedIn): ?>
                             <li class="nav-item"><a class="nav-link" href="#">Omat tapahtumat</a></li>

@@ -15,6 +15,7 @@ $statement = $pdo->query(
     'SELECT event_id, title, description, city, event_date,
             duration_minutes, max_participants
     FROM events
+    WHERE event_date >= NOW()
     ORDER BY event_date ASC'
 );
 
