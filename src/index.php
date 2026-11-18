@@ -7,18 +7,30 @@ session_start();
 // This determines which navigation links are shown
 $isLoggedIn = isset($_SESSION['user_id']);
 
+// Loading database settings
 require_once __DIR__ . '/db/db.php';
 
+// Connecting to the database
 $pdo = databaseConnection();
-$eventStatement = $pdo->query(
-        'SELECT title, description, city, event_date
-        FROM events
-        WHERE event_date >= NOW()
-        ORDER BY event_date ASC
+$currentUserId = $isLoggedIn ? (int) $_SESSION['user_id'] : 0;
+
+$eventStatement = $pdo->prepare(
+        'SELECT e.event_id, e.title, e.description, e.city, e.event_date,
+            e.max_participants, COUNT(r.registration_id) AS participant_count,
+            MAX(CASE WHEN r.user_id = :user_id THEN 1 ELSE 0 END) AS is_registered
+        FROM events e
+        LEFT JOIN registrations r ON r.event_id = e.event_id
+        WHERE e.event_date >= NOW()
+        GROUP BY e.event_id, e.title, e.description, e.city, e.event_date, e.max_participants
+        ORDER BY e.event_date ASC
         LIMIT 4'
 );
 
+$eventStatement->execute(['user_id' => $currentUserId]);
 $upcomingEvents = $eventStatement->fetchAll();
+
+$registrationFlash = $_SESSION['registration_flash'] ?? null;
+unset($_SESSION['registration_flash']);
 ?>
 
 <!DOCTYPE html>
@@ -126,6 +138,13 @@ $upcomingEvents = $eventStatement->fetchAll();
 
                             <!-- Incoming events cards -->
                             <h1>Tulevat tapahtumat</h1>
+
+                            <?php if (is_array($registrationFlash) && isset($registrationFlash['message'])): ?>
+                                <p role="status">
+                                    <?= htmlspecialchars((string) $registrationFlash['message'], ENT_QUOTES, 'UTF-8') ?>
+                                </p>
+                            <?php endif; ?>
+
                             <div class="row g-3 incoming-events">
                                 <?php if ($upcomingEvents === []): ?>
                                     <p>Tulevia tapahtumia ei löytynyt.</p>
@@ -146,6 +165,25 @@ $upcomingEvents = $eventStatement->fetchAll();
                                                     Paikka:
                                                     <?= htmlspecialchars($event['city'], ENT_QUOTES, 'UTF-8') ?>
                                                 </p>
+                                                <p class="person-number">
+                                                    Osallistujat:
+                                                    <?= (int) $event['participant_count'] ?>/<?= (int) $event['max_participants'] ?>
+                                                </p>
+                                                <?php if (!$isLoggedIn): ?>
+                                                    <a href="login.php">Kirjaudu sisään ilmoittautuaksesi</a>
+                                                <?php elseif ((int) $event['is_registered'] === 1): ?>
+                                                    <p>Olet jo ilmoittautunut tähän tapahtumaan.</p>
+                                                <?php elseif ((int) $event['participant_count'] >= (int) $event['max_participants']): ?>
+                                                    <button type="button" class="btn btn-secondary" disabled>
+                                                        Ilmoittautuminen täynnä
+                                                    </button>
+                                                <?php else: ?>
+                                                    <form action="register_event.php" method="post">
+                                                        <input type="hidden" name="event_id" value="<?= (int) $event['event_id'] ?>">
+                                                        <input type="hidden" name="return_to" value="index.php">
+                                                        <button type="submit" class="btn btn-primary">Ilmoittaudu</button>
+                                                    </form>
+                                                <?php endif; ?>
                                             </article>
                                         </div>
                                     <?php endforeach; ?>

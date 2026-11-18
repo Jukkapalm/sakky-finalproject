@@ -11,16 +11,27 @@ $isLoggedIn = isset($_SESSION['user_id']);
 
 // Connect to the database and get all events in date order.
 $pdo = databaseConnection();
-$statement = $pdo->query(
-    'SELECT event_id, title, description, city, event_date,
-            duration_minutes, max_participants
-    FROM events
-    WHERE event_date >= NOW()
-    ORDER BY event_date ASC'
+$currentUserId = $isLoggedIn ? (int) $_SESSION['user_id'] : 0;
+
+$statement = $pdo->prepare(
+    'SELECT e.event_id, e.title, e.description, e.city, e.event_date,
+            e.duration_minutes, e.max_participants,
+            COUNT(r.registration_id) AS participant_count,
+            MAX(CASE WHEN r.user_id = :user_id THEN 1 ELSE 0 END) AS is_registered
+    FROM events e
+    LEFT JOIN registrations r ON r.event_id = e.event_id
+    WHERE e.event_date >= NOW()
+    GROUP BY e.event_id, e.title, e.description, e.city, e.event_date,
+             e.duration_minutes, e.max_participants
+    ORDER BY e.event_date ASC'
 );
+$statement->execute(['user_id' => $currentUserId]);
 
 // Fetch the event rows as an array for the page to display.
 $events = $statement->fetchAll();
+
+$registrationFlash = $_SESSION['registration_flash'] ?? null;
+unset($_SESSION['registration_flash']);
 ?>
 
 <!DOCTYPE html>
@@ -72,6 +83,12 @@ $events = $statement->fetchAll();
         <main class="container mt-5 py-5">
             <h1>Kaikki tapahtumat</h1>
 
+            <?php if (is_array($registrationFlash) && isset($registrationFlash['message'])): ?>
+                <p role="status">
+                    <?= htmlspecialchars((string) $registrationFlash['message'], ENT_QUOTES, 'UTF-8') ?>
+                </p>
+            <?php endif; ?>
+
             <!-- Show a message when the database contains no events. -->
             <?php if ($events === []): ?>
                 <p>Tapahtumia ei löytynyt.</p>
@@ -101,7 +118,25 @@ $events = $statement->fetchAll();
                                     ) ?>
                                 </p>
                                 <p>Kesto: <?= (int) $event['duration_minutes'] ?> min</p>
-                                <p>Enimmäisosallistujat: <?= (int) $event['max_participants'] ?></p>
+                                <p class="person-number">
+                                    Osallistujat:
+                                    <?= (int) $event['participant_count'] ?>/<?= (int) $event['max_participants'] ?>
+                                </p>
+                                <?php if (!$isLoggedIn): ?>
+                                    <a href="login.php">Kirjaudu sisään ilmoittautuaksesi</a>
+                                <?php elseif ((int) $event['is_registered'] === 1): ?>
+                                    <p>Olet jo ilmoittautunut tähän tapahtumaan.</p>
+                                <?php elseif ((int) $event['participant_count'] >= (int) $event['max_participants']): ?>
+                                    <button type="button" class="btn btn-secondary" disabled>
+                                        Ilmoittautuminen täynnä
+                                    </button>
+                                <?php else: ?>
+                                    <form action="register_event.php" method="post">
+                                        <input type="hidden" name="event_id" value="<?= (int) $event['event_id'] ?>">
+                                        <input type="hidden" name="return_to" value="events.php">
+                                        <button type="submit" class="btn btn-primary">Ilmoittaudu</button>
+                                    </form>
+                                <?php endif; ?>
                             </article>
                         </div>
                     <?php endforeach; ?>
