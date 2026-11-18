@@ -61,7 +61,7 @@ unset($_SESSION['registration_flash']);
 
                         <!-- If user logged in, show these links  -->
                         <?php if ($isLoggedIn): ?>
-                            <li class="nav-item"><a class="nav-link" href="#">Omat tapahtumat</a></li>
+                            <li class="nav-item"><a class="nav-link" href="my_events.php">Omat tapahtumat</a></li>
                             <li class="nav-item">
                                 <form action="logout.php" method="post">
                                     <button type="submit" class="nav-link border-0 bg-transparent">Kirjaudu ulos</button>
@@ -125,7 +125,12 @@ unset($_SESSION['registration_flash']);
                                 <?php if (!$isLoggedIn): ?>
                                     <a href="login.php">Kirjaudu sisään ilmoittautuaksesi</a>
                                 <?php elseif ((int) $event['is_registered'] === 1): ?>
-                                    <p>Olet jo ilmoittautunut tähän tapahtumaan.</p>
+                                    <form action="register_event.php" method="post">
+                                        <input type="hidden" name="event_id" value="<?= (int) $event['event_id'] ?>">
+                                        <input type="hidden" name="return_to" value="events.php">
+                                        <input type="hidden" name="action" value="cancel">
+                                        <button type="submit" class="btn btn-outline-danger">Peru ilmoittautuminen</button>
+                                    </form>
                                 <?php elseif ((int) $event['participant_count'] >= (int) $event['max_participants']): ?>
                                     <button type="button" class="btn btn-secondary" disabled>
                                         Ilmoittautuminen täynnä

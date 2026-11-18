@@ -5,7 +5,11 @@ require_once __DIR__ . '/db/db.php';
 
 // Only redirect back to pages that display the event list.
 $returnToInput = $_POST['return_to'] ?? '';
-$returnTo = is_string($returnToInput) && in_array($returnToInput, ['index.php', 'events.php'], true)
+$returnTo = is_string($returnToInput) && in_array(
+    $returnToInput,
+    ['index.php', 'events.php', 'my_events.php'],
+    true
+)
     ? $returnToInput
     : 'events.php';
 
@@ -26,7 +30,17 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 // Require a valid logged-in user.
 $userId = filter_var($_SESSION['user_id'] ?? null, FILTER_VALIDATE_INT);
 if ($userId === false || $userId < 1) {
-    $redirectWithMessage('Kirjaudu sisään ilmoittautuaksesi.');
+    $redirectWithMessage('Kirjaudu sisään muuttaaksesi ilmoittautumistasi.');
+}
+
+// Existing forms without an action continue to register by default.
+$actionInput = $_POST['action'] ?? 'register';
+$action = is_string($actionInput) && in_array($actionInput, ['register', 'cancel'], true)
+    ? $actionInput
+    : '';
+
+if ($action === '') {
+    $redirectWithMessage('Virheellinen toiminto.');
 }
 
 // Validate the submitted event ID before using it in a database query.
@@ -68,6 +82,25 @@ try {
         'user_id' => $userId,
         'event_id' => $eventId,
     ]);
+
+    if ($action === 'cancel') {
+        if ($existingStatement->fetch() === false) {
+            $pdo->rollBack();
+            $redirectWithMessage('Et ole ilmoittautunut tähän tapahtumaan.');
+        }
+
+        $deleteStatement = $pdo->prepare(
+            'DELETE FROM registrations
+            WHERE user_id = :user_id AND event_id = :event_id'
+        );
+        $deleteStatement->execute([
+            'user_id' => $userId,
+            'event_id' => $eventId,
+        ]);
+
+        $pdo->commit();
+        $redirectWithMessage('Ilmoittautuminen peruttiin.');
+    }
 
     if ($existingStatement->fetch() !== false) {
         $pdo->rollBack();
