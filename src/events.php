@@ -13,6 +13,50 @@ $isLoggedIn = isset($_SESSION['user_id']);
 $pdo = databaseConnection();
 $currentUserId = $isLoggedIn ? (int) $_SESSION['user_id'] : 0;
 
+$search = [];
+foreach (['event', 'city', 'date'] as $field) {
+    $value = $_GET[$field] ?? '';
+    if (!is_string($value)) {
+        http_response_code(400);
+        exit('Virheellinen hakuehto.');
+    }
+
+    $search[$field] = trim($value);
+}
+
+if ($search['date'] !== '') {
+    $searchDate = DateTimeImmutable::createFromFormat('!Y-m-d', $search['date']);
+    $dateErrors = DateTimeImmutable::getLastErrors();
+    if (
+        $searchDate === false ||
+        ($dateErrors !== false && ($dateErrors['warning_count'] > 0 || $dateErrors['error_count'] > 0)) ||
+        $searchDate->format('Y-m-d') !== $search['date']
+    ) {
+        http_response_code(400);
+        exit('Virheellinen päivämäärä.');
+    }
+}
+
+$conditions = ['e.event_date >= NOW()'];
+$parameters = ['user_id' => $currentUserId];
+
+if ($search['event'] !== '') {
+    $conditions[] = "e.title LIKE :event ESCAPE '!'";
+    $parameters['event'] = '%' . strtr($search['event'], ['!' => '!!', '%' => '!%', '_' => '!_']) . '%';
+}
+
+if ($search['city'] !== '') {
+    $conditions[] = "e.city LIKE :city ESCAPE '!'";
+    $parameters['city'] = '%' . strtr($search['city'], ['!' => '!!', '%' => '!%', '_' => '!_']) . '%';
+}
+
+if ($search['date'] !== '') {
+    $conditions[] = 'DATE(e.event_date) = :date';
+    $parameters['date'] = $search['date'];
+}
+
+$hasSearch = $search['event'] !== '' || $search['city'] !== '' || $search['date'] !== '';
+
 $statement = $pdo->prepare(
     'SELECT e.event_id, e.title, e.description, e.city, e.event_date,
             e.duration_minutes, e.max_participants,
@@ -20,12 +64,12 @@ $statement = $pdo->prepare(
             MAX(CASE WHEN r.user_id = :user_id THEN 1 ELSE 0 END) AS is_registered
     FROM events e
     LEFT JOIN registrations r ON r.event_id = e.event_id
-    WHERE e.event_date >= NOW()
+    WHERE ' . implode(' AND ', $conditions) . '
     GROUP BY e.event_id, e.title, e.description, e.city, e.event_date,
              e.duration_minutes, e.max_participants
     ORDER BY e.event_date ASC'
 );
-$statement->execute(['user_id' => $currentUserId]);
+$statement->execute($parameters);
 
 // Fetch the event rows as an array for the page to display.
 $events = $statement->fetchAll();
@@ -87,6 +131,47 @@ unset($_SESSION['registration_flash']);
         <main class="container mt-5 py-5">
             <h1>Kaikki tapahtumat</h1>
 
+            <form action="events.php" method="get" class="mb-4">
+                <div class="row g-2 align-items-end">
+                    <div class="col-12 col-md-4">
+                        <label for="event">Tapahtuman nimi</label>
+                        <input
+                            type="search"
+                            id="event"
+                            name="event"
+                            class="form-control"
+                            value="<?= htmlspecialchars($search['event'], ENT_QUOTES, 'UTF-8') ?>"
+                        >
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <label for="city">Kaupunki</label>
+                        <input
+                            type="search"
+                            id="city"
+                            name="city"
+                            class="form-control"
+                            value="<?= htmlspecialchars($search['city'], ENT_QUOTES, 'UTF-8') ?>"
+                        >
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <label for="date">Päivämäärä</label>
+                        <input
+                            type="date"
+                            id="date"
+                            name="date"
+                            class="form-control"
+                            value="<?= htmlspecialchars($search['date'], ENT_QUOTES, 'UTF-8') ?>"
+                        >
+                    </div>
+                    <div class="col-12 col-md-2 d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">Hae</button>
+                        <?php if ($hasSearch): ?>
+                            <a href="events.php" class="btn btn-outline-secondary">Tyhjennä</a>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </form>
+
             <?php if (is_array($registrationFlash) && isset($registrationFlash['message'])): ?>
                 <p role="status">
                     <?= htmlspecialchars((string) $registrationFlash['message'], ENT_QUOTES, 'UTF-8') ?>
@@ -95,7 +180,11 @@ unset($_SESSION['registration_flash']);
 
             <!-- Show a message when the database contains no events. -->
             <?php if ($events === []): ?>
-                <p>Tapahtumia ei löytynyt.</p>
+                <p>
+                    <?= $hasSearch
+                        ? 'Hakuehdoilla ei löytynyt tulevia tapahtumia.'
+                        : 'Tapahtumia ei löytynyt.' ?>
+                </p>
             <?php else: ?>
                 <div class="row g-3">
 

@@ -118,7 +118,7 @@ unset($_SESSION['registration_flash']);
                         <div class="form-side px-3">
                             <h1>Hae tapahtumia</h1>
                             <div class="form-field p-3">
-                                <form action="">
+                                <form action="events.php" method="get">
                                     <label for="event">Hae tapahtumia tapahtumanimellä</label><br>
                                     <input type="text" id="event" name="event" placeholder="Syötä tapahtuman nimi"><br>
                                     <label for="city">Hae tapahtumia kaupungin perusteella</label><br>
