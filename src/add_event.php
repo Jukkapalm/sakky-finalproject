@@ -16,6 +16,9 @@ require_once __DIR__ . '/db/db.php';
 // Store a validation error
 $error = '';
 
+$timezone = new DateTimeZone('Europe/Helsinki');
+$minimumEventDate = (new DateTimeImmutable('now', $timezone))->format('Y-m-d\TH:i');
+
 // Form values variables
 $title = '';
 $description = '';
@@ -59,7 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $maxParticipants = $maxParticipantsInput;
 
         // Convert the date and time from the datetime-local field's format
-        $date = DateTimeImmutable::createFromFormat('Y-m-d\TH:i', $eventdate);
+        $date = DateTimeImmutable::createFromFormat('Y-m-d\TH:i', $eventdate, $timezone);
 
         // Get any warnings or errors produced while parsing the date and time
         $dateErrors = DateTimeImmutable::getLastErrors();
@@ -75,6 +78,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $date->format('Y-m-d\TH:i') !== $eventdate
         ) {
             $error = 'Tarkista tapahtuman päivämäärä ja aika.';
+
+        // Events must be scheduled for a future date and time in Finland.
+        } elseif ($date < new DateTimeImmutable('now', $timezone)) {
+            $error = 'Tapahtuman päivämäärän ja ajan pitää olla tulevaisuudessa.';
 
         // Both numeric values must be valid integers greater than zero
         } elseif (
@@ -158,7 +165,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <input type="text" id="city" name="city" maxlength="100" required value="<?= htmlspecialchars($city, ENT_QUOTES, 'UTF-8') ?>">
 
             <label for="event_date">Päivämäärä ja aika</label>
-            <input type="datetime-local" id="event_date" name="event_date" required value="<?= htmlspecialchars($eventdate, ENT_QUOTES, 'UTF-8') ?>">
+            <input type="datetime-local" id="event_date" name="event_date" min="<?= htmlspecialchars($minimumEventDate, ENT_QUOTES, 'UTF-8') ?>" required value="<?= htmlspecialchars($eventdate, ENT_QUOTES, 'UTF-8') ?>">
 
             <label for="duration_minutes">Kesto minuutteina</label>
             <input type="number" id="duration_minutes" name="duration_minutes" min="1" required value="<?= htmlspecialchars($duration, ENT_QUOTES, 'UTF-8') ?>">

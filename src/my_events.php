@@ -1,5 +1,6 @@
 <?php
 
+// Start the session and ensure only logged-in users can access this page.
 session_start();
 
 $userId = filter_var($_SESSION['user_id'] ?? null, FILTER_VALIDATE_INT);
@@ -8,6 +9,7 @@ if ($userId === false || $userId < 1) {
     exit;
 }
 
+// Load the database connection and fetch this user's upcoming registered events.
 require_once __DIR__ . '/db/db.php';
 
 $pdo = databaseConnection();
@@ -29,6 +31,7 @@ $statement = $pdo->prepare(
 $statement->execute(['user_id' => $userId]);
 $events = $statement->fetchAll();
 
+// Retrieve and clear the one-time registration status message.
 $registrationFlash = $_SESSION['registration_flash'] ?? null;
 unset($_SESSION['registration_flash']);
 ?>
@@ -71,16 +74,19 @@ unset($_SESSION['registration_flash']);
         <main class="container mt-5 py-5">
             <h1>Omat tapahtumat</h1>
 
+            <!-- Show a message after a registration change. -->
             <?php if (is_array($registrationFlash) && isset($registrationFlash['message'])): ?>
                 <p role="status">
                     <?= htmlspecialchars((string) $registrationFlash['message'], ENT_QUOTES, 'UTF-8') ?>
                 </p>
             <?php endif; ?>
 
+            <!-- Show an empty-state message when the user has no upcoming events. -->
             <?php if ($events === []): ?>
                 <p>Sinulla ei ole ilmoittautumisia tuleviin tapahtumiin.</p>
             <?php else: ?>
                 <div class="row g-3">
+                    <!-- Display each registered event and provide an option to cancel. -->
                     <?php foreach ($events as $event): ?>
                         <div class="col-12 col-md-6 col-lg-4">
                             <article class="card event-card p-3 h-100">
