@@ -13,11 +13,17 @@ if (($_SESSION['role'] ?? '') !== 'admin') {
 // Loading database settings
 require_once __DIR__ . '/db/db.php';
 
-// Store a validation error
-$error = '';
-
+$pdo = databaseConnection();
 $timezone = new DateTimeZone('Europe/Helsinki');
 $minimumEventDate = (new DateTimeImmutable('now', $timezone))->format('Y-m-d\TH:i');
+
+if (!isset($_SESSION['csrf_token']) || !is_string($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+$csrfToken = $_SESSION['csrf_token'];
+
+// Store a validation error
+$error = '';
 
 // Form values variables
 $title = '';
@@ -27,7 +33,62 @@ $eventdate = '';
 $duration = '';
 $maxParticipants = '';
 
-// Show success message when the browser returns after a successful insert
+// Load an existing event when the admin is editing it.
+$eventIdInput = $_SERVER['REQUEST_METHOD'] === 'POST'
+    ? ($_POST['event_id'] ?? '')
+    : ($_GET['event_id'] ?? '');
+$editingEventId = null;
+$existingEvent = null;
+
+if ($eventIdInput !== '') {
+    $editingEventId = is_string($eventIdInput)
+        ? filter_var($eventIdInput, FILTER_VALIDATE_INT)
+        : false;
+
+    if ($editingEventId === false || $editingEventId < 1) {
+        http_response_code(400);
+        exit('Virheellinen tapahtuma.');
+    }
+
+    $existingStatement = $pdo->prepare(
+        'SELECT event_id, title, description, city, event_date, duration_minutes, max_participants
+        FROM events
+        WHERE event_id = :event_id'
+    );
+    $existingStatement->execute(['event_id' => $editingEventId]);
+    $existingEvent = $existingStatement->fetch();
+
+    if ($existingEvent === false) {
+        http_response_code(404);
+        exit('Tapahtumaa ei löytynyt.');
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        $title = $existingEvent['title'];
+        $description = $existingEvent['description'] ?? '';
+        $city = $existingEvent['city'];
+        $eventdate = (new DateTimeImmutable($existingEvent['event_date'], $timezone))
+            ->format('Y-m-d\TH:i');
+        $duration = (string) $existingEvent['duration_minutes'];
+        $maxParticipants = (string) $existingEvent['max_participants'];
+    }
+
+    $existingMinimum = (new DateTimeImmutable($existingEvent['event_date'], $timezone))
+        ->format('Y-m-d\TH:i');
+    if ($existingMinimum < $minimumEventDate) {
+        $minimumEventDate = $existingMinimum;
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $submittedToken = $_POST['csrf_token'] ?? '';
+    if (!is_string($submittedToken) || !hash_equals($csrfToken, $submittedToken)) {
+        http_response_code(403);
+        exit('Virheellinen lomaketunniste.');
+    }
+}
+
+// Show success message when the browser returns after a successful insert.
 $success = ($_GET['success'] ?? '') === '1';
 
 // Process the form only when it has been submitted using the POST method
@@ -79,10 +140,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ) {
             $error = 'Tarkista tapahtuman päivämäärä ja aika.';
 
-        // Events must be scheduled for a future date and time in Finland.
-        } elseif ($date < new DateTimeImmutable('now', $timezone)) {
-            $error = 'Tapahtuman päivämäärän ja ajan pitää olla tulevaisuudessa.';
-
         // Both numeric values must be valid integers greater than zero
         } elseif (
             filter_var($duration, FILTER_VALIDATE_INT) === false ||
@@ -93,36 +150,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'Keston ja osallistujamäärän pitää olla vähintään 1.';
         } else {
 
-            // The input in valid, connecting to the database
-            $pdo = databaseConnection();
+            if ($editingEventId !== null && $date->format('Y-m-d H:i:s') === $existingEvent['event_date']) {
+                $isPastDateAllowed = true;
+            } else {
+                $isPastDateAllowed = false;
+            }
 
-            // Preparing SQL statement
-            $statement = $pdo->prepare(
-                'INSERT INTO events
-                    (title, description, city, event_date, duration_minutes, max_participants)
-                VALUES
-                    (:title, :description, :city, :event_date, :duration_minutes, :max_participants)'
-            );
+            if ($date < new DateTimeImmutable('now', $timezone) && !$isPastDateAllowed) {
+                $error = 'Tapahtuman päivämäärän ja ajan pitää olla tulevaisuudessa.';
+            } else {
+                $eventValues = [
+                    'title' => $title,
+                    'description' => $description === '' ? null : $description,
+                    'city' => $city,
+                    'event_date' => $date->format('Y-m-d H:i:s'),
+                    'duration_minutes' => (int) $duration,
+                    'max_participants' => (int) $maxParticipants,
+                ];
 
-            // Attach the form values to the query's named parameters
-            $statement->execute([
-                'title' => $title,
-
-                // Empty description stored as a NULL in the database
-                'description' => $description === '' ? null : $description,
-                'city' => $city,
-
-                // Convert the date to the format expected by the datbase
-                'event_date' => $date->format('Y-m-d H:i:s'),
-
-                // Convert the validate numeric values to integers
-                'duration_minutes' => (int) $duration,
-                'max_participants' => (int) $maxParticipants,
-            ]);
-
-            // Redirect after saving
-            header('Location: add_event.php?success=1');
-            exit;
+                if ($editingEventId === null) {
+                    $statement = $pdo->prepare(
+                        'INSERT INTO events
+                            (title, description, city, event_date, duration_minutes, max_participants)
+                        VALUES
+                            (:title, :description, :city, :event_date, :duration_minutes, :max_participants)'
+                    );
+                    $statement->execute($eventValues);
+                    header('Location: add_event.php?success=1');
+                } else {
+                    $eventValues['event_id'] = $editingEventId;
+                    $statement = $pdo->prepare(
+                        'UPDATE events
+                        SET title = :title,
+                            description = :description,
+                            city = :city,
+                            event_date = :event_date,
+                            duration_minutes = :duration_minutes,
+                            max_participants = :max_participants
+                        WHERE event_id = :event_id'
+                    );
+                    $statement->execute($eventValues);
+                    header('Location: manage_events.php?updated=1');
+                }
+                exit;
+            }
         }
     }
 }
@@ -133,13 +204,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Lisää tapahtuma</title>
+        <title><?= $editingEventId === null ? 'Lisää tapahtuma' : 'Muokkaa tapahtumaa' ?></title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
         <link rel="stylesheet" href="css/styles.css">
     </head>
     <main class="container mt-5 py-5">
-        <h1>Lisää tapahtuma</h1>
-        <p><a href="index.php">Takaisin etusivulle</a></p>
+        <h1><?= $editingEventId === null ? 'Lisää tapahtuma' : 'Muokkaa tapahtumaa' ?></h1>
+        <p><a href="manage_events.php">Takaisin tapahtumien hallintaan</a></p>
 
         <!-- Display a confirmation after the event has been saved -->
         <?php if ($success): ?>
@@ -154,7 +225,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
 
         <!-- Send the form values to this page using a POST request -->
-        <form action="add_event.php" method="post">
+        <form action="add_event.php<?= $editingEventId === null ? '' : '?event_id=' . (int) $editingEventId ?>" method="post">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
+            <?php if ($editingEventId !== null): ?>
+                <input type="hidden" name="event_id" value="<?= (int) $editingEventId ?>">
+            <?php endif; ?>
             <label for="title">Tapahtuman nimi</label>
             <input type="text" id="title" name="title" maxlength="100" required value="<?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?>">
 
@@ -173,7 +248,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <label for="max_participants">Enimmäisosallistujat</label>
             <input type="number" id="max_participants" name="max_participants" min="1" required value="<?= htmlspecialchars($maxParticipants, ENT_QUOTES, 'UTF-8') ?>">
 
-            <button type="submit">Lisää tapahtuma</button>
+            <button type="submit"><?= $editingEventId === null ? 'Lisää tapahtuma' : 'Tallenna muutokset' ?></button>
         </form>
     </main>
 </html>

@@ -80,6 +80,9 @@ unset($_SESSION['registration_flash']);
                             <li class="nav-item">
                                 <a class="nav-link" href="add_event.php">Lisää tapahtuma</a>
                             </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="manage_events.php">Hallitse tapahtumia</a>
+                            </li>
                         <?php endif; ?>
 
                         <!-- If user logged in, show these links  -->

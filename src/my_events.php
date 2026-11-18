@@ -60,6 +60,9 @@ unset($_SESSION['registration_flash']);
                     <ul class="navbar-nav ms-auto align-items-lg-center text-center">
                         <li class="nav-item"><a class="nav-link" href="index.php">Etusivu</a></li>
                         <li class="nav-item"><a class="nav-link" href="events.php">Kaikki tapahtumat</a></li>
+                        <?php if (($_SESSION['role'] ?? '') === 'admin'): ?>
+                            <li class="nav-item"><a class="nav-link" href="manage_events.php">Hallitse tapahtumia</a></li>
+                        <?php endif; ?>
                         <li class="nav-item"><a class="nav-link" href="my_events.php">Omat tapahtumat</a></li>
                         <li class="nav-item">
                             <form action="logout.php" method="post">
